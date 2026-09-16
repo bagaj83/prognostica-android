@@ -3,7 +3,6 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,9 +11,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
       - run: npm install
-      - name: Build web application for Android
+      - name: Build web application
         run: npx vite build
       - name: Copy web build into Android assets
         run: |
