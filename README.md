@@ -1,3 +1,3 @@
-# Прогностика Android
+# prognostica-android
 
-Автоматическая сборка демонстрационного Android-приложения «Прогностика».
+Control branch for native Android build of Prognostica 0.2.0-demo.
