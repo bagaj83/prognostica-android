@@ -1,38 +1,80 @@
-name: Build Prognostica APK
+name: Build Prognostica Native APK
+
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - native-0.2.0-demo
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm install
-      - name: Build web application
-        run: npx vite build
-      - name: Copy web build into Android assets
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify source archive
+        run: test -f PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo.zip
+
+      - name: Extract source archive
         run: |
-          rm -rf android/app/src/main/assets/www
-          mkdir -p android/app/src/main/assets/www
-          cp -R dist/. android/app/src/main/assets/www/
-      - uses: actions/setup-java@v4
+          rm -rf ci-source
+          mkdir -p ci-source
+          unzip -q PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo.zip -d ci-source
+
+      - name: Apply confirmed compile-only fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('ci-source/android/app/src/main/java/kz/prognostika/app/ui/theme/Theme.kt')
+          s = p.read_text(encoding='utf-8')
+          imp = 'import androidx.compose.ui.graphics.Color\n'
+          if imp not in s:
+              marker = 'import androidx.compose.ui.graphics.toArgb\n'
+              if marker not in s:
+                  raise SystemExit('Expected import marker not found in Theme.kt')
+              s = s.replace(marker, imp + marker, 1)
+              p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.11.1'
-      - name: Build Android APK
-        working-directory: android
-        run: gradle assembleDebug --stacktrace
-      - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Prognostica.apk
-      - uses: actions/upload-artifact@v4
+          gradle-version: '8.5'
+
+      - name: Build native Android APK
+        working-directory: ci-source/android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare reproducible source package
+        run: |
+          rm -f PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo-buildable.zip
+          cd ci-source
+          zip -qr ../PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo-buildable.zip android -x '*/build/*' '*/.gradle/*' '*/local.properties'
+          cd ..
+
+      - name: Prepare APK and checksums
+        run: |
+          cp ci-source/android/app/build/outputs/apk/debug/app-debug.apk Prognostica_0.2.0-demo_debug.apk
+          sha256sum Prognostica_0.2.0-demo_debug.apk | tee Prognostica_0.2.0-demo_debug.apk.sha256
+          sha256sum PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo-buildable.zip | tee PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo-buildable.zip.sha256
+          printf 'source_commit=%s\n' "$GITHUB_SHA" > BUILD_INFO.txt
+          printf 'versionName=0.2.0-demo\nversionCode=1\napplicationId=kz.prognostika.app\n' >> BUILD_INFO.txt
+
+      - name: Upload control package
+        uses: actions/upload-artifact@v4
         with:
-          name: Prognostica-APK
-          path: Prognostica.apk
+          name: Prognostica-0.2.0-demo-control-package
+          path: |
+            Prognostica_0.2.0-demo_debug.apk
+            Prognostica_0.2.0-demo_debug.apk.sha256
+            PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo-buildable.zip
+            PROGNOSTICA_ANDROID_SOURCE_0.2.0-demo-buildable.zip.sha256
+            BUILD_INFO.txt
           if-no-files-found: error
