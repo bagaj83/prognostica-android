@@ -5,8 +5,10 @@
 Project: **PROGNOSTICA — minimal DAS module**.
 
 Primary working specification:
-- `prognostika_das_spec_v0_1.docx`
-- Status: working pilot specification, not proof of implemented field capability.
+- `DAS_WORKING_SPEC_v0.2_2026-10-05.docx`
+- Status: WORKING / NON-CANONICAL pilot specification, not proof of implemented field capability.
+- The authoritative project constraints for this work are also defined by `01_ARCHITECTURE_AND_TECHNICAL_SPECIFICATION`, `03_AI_ML_MODELS`, `04_DAS_DFOS`, and `07_DECISIONS_AND_PROTOCOLS`.
+- If the DOCX is not available in the coding environment, follow this `AGENTS.md` for M1–M2 and do not invent missing requirements; request the exact specification excerpt when needed.
 
 Current development scope: **M1–M2** from the specification:
 1. data model and test scenarios;
@@ -33,8 +35,9 @@ Use the following internal meanings consistently:
 
 - `data_mode`: `TEST | REPLAY | LIVE`
 - `record_origin`: e.g. `synthetic | field | calibration`
-- `observed_at`: time of physical observation/event
-- `received_at`: time accepted by the server
+- `observed_at`: time of physical observation/event; canonical meaning = `phenomenon_time`
+- `received_at`: time accepted by the server; canonical ingestion meaning = `ingested_at`
+- `result_time`: separate time when a measurement/processing result is produced later than the physical observation
 - `replayed_at`: time of replay execution, only for REPLAY
 - `data_quality`: `unknown | good | degraded | insufficient`
 - `verification_state`: workflow state of event verification
@@ -58,7 +61,7 @@ Every record/event should retain, where applicable:
 - data mode and origin;
 - observation and receipt times;
 - source clock synchronization status;
-- measured quantity and unit;
+- measured quantity, original unit and normalized `unit_code` (UCUM for quantitative data);
 - raw-file or raw-fragment reference;
 - checksum;
 - adapter version;
@@ -130,7 +133,7 @@ Do not expose a probability-like `confidence` unless its meaning and calibration
 - Roles: observer/operator/engineer/administrator/integration service as required.
 - Do not trust client-side role checks as authorization.
 - Keep the audit log append-only from normal application workflows.
-- Do not store secrets, tokens, API keys or certificates in source code or client bundles.
+- Do not store secrets, tokens, API keys or certificates in source code, client bundles or ordinary application records; use server-side secret storage and `secret_ref`.
 - Use protected transport for remote access.
 
 ## 9. Acceptance for M1–M2
